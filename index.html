@@ -177,6 +177,15 @@
       animation: bang 0.4s ease-out;
     }
 
+    .counter.message {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(22px, 7vw, 36px);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--brown);
+      text-shadow: 2px 2px 0 var(--cream), 4px 4px 10px rgba(0,0,0,0.4);
+    }
+
     @keyframes bang {
       0%   { transform: scale(1.3) rotate(-3deg); }
       40%  { transform: scale(0.95) rotate(2deg); }
@@ -229,6 +238,8 @@
       justify-content: center;
       margin-top: 4px;
     }
+
+    .btn-row.hidden { display: none; }
 
     .btn {
       font-family: 'Rye', cursive;
@@ -325,8 +336,8 @@
       <div class="progress-bar" id="progress-bar" style="width:100%"></div>
     </div>
 
-    <div class="btn-row">
-      <button class="btn btn-reset" id="btn-reset" onclick="resetTimer()">↺ Reiniciar</button>
+    <div class="btn-row hidden" id="btn-row">
+      <button class="btn btn-reset" id="btn-reset" onclick="resetTimer()">↺ Comenzar de nuevo</button>
     </div>
   </div>
 </div>
@@ -409,16 +420,36 @@
 
   // ── Timer ──
   const TOTAL = 5;
+  const ROUNDS = 2;
+  const PRECOUNT_TOTAL = 3;
   let timeLeft = TOTAL;
+  let round = 1;
+  let preCount = PRECOUNT_TOTAL;
   let interval = null;
 
   const counterEl  = document.getElementById('counter');
   const progressEl = document.getElementById('progress-bar');
   const flashEl    = document.getElementById('flash-overlay');
+  const btnRowEl   = document.getElementById('btn-row');
 
   function updateDisplay() {
+    counterEl.classList.remove('message');
     counterEl.textContent = timeLeft;
     progressEl.style.width = (timeLeft / TOTAL * 100) + '%';
+  }
+
+  function showPrecount(value) {
+    counterEl.classList.remove('message', 'flash');
+    counterEl.textContent = value;
+    progressEl.style.width = '100%';
+  }
+
+  function showResolution() {
+    counterEl.classList.remove('flash', 'tick');
+    counterEl.classList.add('message');
+    counterEl.textContent = 'Resolución de cartas';
+    progressEl.style.width = '0%';
+    btnRowEl.classList.remove('hidden');
   }
 
   function bang() {
@@ -458,14 +489,21 @@
 
   function step() {
     if (timeLeft === 1) {
-      timeLeft = TOTAL;
-      updateDisplay();
-      bang();
-    } else {
-      timeLeft--;
-      updateDisplay();
-      tick();
+      if (round < ROUNDS) {
+        round++;
+        timeLeft = TOTAL;
+        updateDisplay();
+        bang();
+      } else {
+        clearInterval(interval);
+        bang();
+        showResolution();
+      }
+      return;
     }
+    timeLeft--;
+    updateDisplay();
+    tick();
   }
 
   function startTimer() {
@@ -473,13 +511,42 @@
     interval = setInterval(step, 1000);
   }
 
+  function startPrecount() {
+    clearInterval(interval);
+    preCount = PRECOUNT_TOTAL;
+    showPrecount(preCount);
+    tick();
+    interval = setInterval(() => {
+      if (preCount > 1) {
+        preCount--;
+        showPrecount(preCount);
+        tick();
+        return;
+      }
+      clearInterval(interval);
+      counterEl.textContent = 'BANG!';
+      counterEl.classList.remove('tick');
+      counterEl.classList.add('flash');
+      bang();
+      setTimeout(() => {
+        timeLeft = TOTAL;
+        round = 1;
+        updateDisplay();
+        tick();
+        startTimer();
+      }, 900);
+    }, 1000);
+  }
+
   function resetTimer() {
     clearInterval(interval);
+    round = 1;
     timeLeft = TOTAL;
     updateDisplay();
     counterEl.classList.remove('flash', 'tick');
+    btnRowEl.classList.add('hidden');
     playTick();
-    startTimer();
+    startPrecount();
   }
 
   document.addEventListener('click', () => {
@@ -487,7 +554,7 @@
   }, { once: true });
 
   updateDisplay();
-  startTimer();
+  startPrecount();
 </script>
 </body>
 </html>

@@ -336,6 +336,10 @@
       <div class="progress-bar" id="progress-bar" style="width:100%"></div>
     </div>
 
+    <div class="btn-row" id="start-row">
+      <button class="btn" id="btn-start">▶ Comenzar</button>
+    </div>
+
     <div class="btn-row hidden" id="btn-row">
       <button class="btn btn-reset" id="btn-reset" onclick="resetTimer()">↺ Comenzar de nuevo</button>
     </div>
@@ -345,15 +349,24 @@
 <script>
   // ── Audio Engine (Web Audio API — sin archivos externos) ──
   let audioCtx = null;
+  let started = false;
 
   function getCtx() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     return audioCtx;
   }
 
+  function ensureAudio() {
+    const ctx = getCtx();
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+    return ctx;
+  }
+
   function playTick() {
     try {
-      const ctx = getCtx();
+      const ctx = ensureAudio();
       const t = ctx.currentTime;
       const buf = ctx.createBuffer(1, ctx.sampleRate * 0.06, ctx.sampleRate);
       const d = buf.getChannelData(0);
@@ -378,7 +391,7 @@
 
   function playGunshot() {
     try {
-      const ctx = getCtx();
+      const ctx = ensureAudio();
       const t = ctx.currentTime;
       const sr = ctx.sampleRate;
       const len = sr * 0.9;
@@ -431,6 +444,8 @@
   const progressEl = document.getElementById('progress-bar');
   const flashEl    = document.getElementById('flash-overlay');
   const btnRowEl   = document.getElementById('btn-row');
+  const startRowEl = document.getElementById('start-row');
+  const startBtnEl = document.getElementById('btn-start');
 
   function updateDisplay() {
     counterEl.classList.remove('message');
@@ -450,6 +465,13 @@
     counterEl.textContent = 'Resolución de cartas';
     progressEl.style.width = '0%';
     btnRowEl.classList.remove('hidden');
+  }
+
+  function showTapToStart() {
+    counterEl.classList.remove('message', 'flash', 'tick');
+    counterEl.textContent = '';
+    progressEl.style.width = '100%';
+    startRowEl.classList.remove('hidden');
   }
 
   function bang() {
@@ -545,16 +567,23 @@
     updateDisplay();
     counterEl.classList.remove('flash', 'tick');
     btnRowEl.classList.add('hidden');
+    ensureAudio();
     playTick();
     startPrecount();
   }
 
-  document.addEventListener('click', () => {
-    if (!audioCtx) getCtx();
-  }, { once: true });
+  function startAll() {
+    if (started) return;
+    started = true;
+    ensureAudio();
+    startRowEl.classList.add('hidden');
+    updateDisplay();
+    startPrecount();
+  }
 
-  updateDisplay();
-  startPrecount();
+  startBtnEl.addEventListener('click', startAll, { once: true });
+
+  showTapToStart();
 </script>
 </body>
 </html>
